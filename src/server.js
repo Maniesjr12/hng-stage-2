@@ -12,6 +12,4 @@ function startServer() {
   });
 }
 
-startServer();
-
 module.exports = server;
