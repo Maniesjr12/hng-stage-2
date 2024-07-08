@@ -8,11 +8,12 @@ describe("Auth Endpoints", () => {
   beforeAll(async () => {
     await prisma.user.deleteMany();
     await prisma.organisation.deleteMany();
-  });
+  }, 50000);
 
   afterAll(async () => {
     await prisma.$disconnect();
-  });
+    app.close();
+  }, 50000);
 
   describe("POST /auth/register", () => {
     it("should register user successfully with default organisation", async () => {

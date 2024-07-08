@@ -30,6 +30,7 @@ exports.createOrg = async (req, res) => {
       data: organisation,
     });
   } catch (err) {
+    console.log(err);
     res.status(400).json({ status: "Bad request", message: "Client error" });
   }
 };

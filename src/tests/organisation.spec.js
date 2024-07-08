@@ -18,20 +18,25 @@ describe("Organization Access Control", () => {
       },
     });
 
-    userId = user.userId;
+    userId = Number(user.userId);
     token = generateToken(user);
 
     const org = await prisma.organisation.create({
       data: {
         name: "John's Organisation",
         users: {
-          connect: { userId },
+          connect: { userId: user.userId },
         },
       },
     });
 
     orgId = org.orgId;
-  });
+  }, 50000);
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+    app.close();
+  }, 50000);
 
   it("should not allow users to see data from organizations they don't have access to", async () => {
     const otherUser = await prisma.user.create({
