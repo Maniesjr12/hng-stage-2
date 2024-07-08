@@ -15,6 +15,12 @@ exports.register = async (req, res) => {
   const { firstName, lastName, email, password, phone } = req.body;
 
   try {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email },
+    });
+    if (existingUser) {
+      return res.status(422).json({ errors: "email alredy exists" });
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {

@@ -1,68 +1,99 @@
+// tests/auth.spec.js
 const request = require("supertest");
 const app = require("../server");
+const { PrismaClient } = require("../prisma/client");
+const prisma = new PrismaClient();
 
-describe("Auth API", () => {
-  it("should register user successfully", async () => {
-    const res = await request(app).post("/auth/register").send({
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@example.com",
-      password: "password123",
-      phone: "1234567890",
-    });
-
-    expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty("data");
-    expect(res.body.data.user).toHaveProperty("userId");
+describe("Auth Endpoints", () => {
+  beforeAll(async () => {
+    await prisma.user.deleteMany();
+    await prisma.organisation.deleteMany();
   });
 
-  it("should fail if required fields are missing", async () => {
-    const res = await request(app).post("/auth/register").send({
-      firstName: "John",
-      email: "john.doe@example.com",
-    });
-
-    expect(res.statusCode).toEqual(422);
-    expect(res.body.errors).toBeInstanceOf(Array);
+  afterAll(async () => {
+    await prisma.$disconnect();
   });
 
-  it("should fail if there’s duplicate email", async () => {
-    await request(app).post("/auth/register").send({
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@example.com",
-      password: "password123",
-      phone: "1234567890",
+  describe("POST /auth/register", () => {
+    it("should register user successfully with default organisation", async () => {
+      const userData = {
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@example.com",
+        password: "password123",
+        phone: "1234567890",
+      };
+
+      const response = await request(app)
+        .post("/api/auth/register")
+        .send(userData);
+
+      expect(response.status).toBe(201);
+      expect(response.body.status).toBe("success");
+      expect(response.body.data.user.email).toBe(userData.email);
+      expect(response.body.data.user.firstName).toBe(userData.firstName);
+      expect(response.body.data.user.lastName).toBe(userData.lastName);
+      expect(response.body.data.user.phone).toBe(userData.phone);
+      expect(response.body.data.accessToken).toBeDefined();
     });
 
-    const res = await request(app).post("/auth/register").send({
-      firstName: "Jane",
-      lastName: "Doe",
-      email: "john.doe@example.com",
-      password: "password123",
-      phone: "0987654321",
+    it("should fail if required fields are missing", async () => {
+      const response = await request(app).post("/api/auth/register").send({
+        lastName: "Doe",
+        email: "john.doe@example.com",
+        password: "password123",
+      });
+
+      expect(response.status).toBe(422);
+      expect(response.body.errors).toBeDefined();
     });
 
-    expect(res.statusCode).toEqual(422);
-    expect(res.body.errors).toBeInstanceOf(Array);
+    it("should fail if there's duplicate email", async () => {
+      const userData = {
+        firstName: "Jane",
+        lastName: "Doe",
+        email: "john.doe@example.com",
+        password: "password123",
+        phone: "1234567890",
+      };
+
+      const response = await request(app)
+        .post("/api/auth/register")
+        .send(userData);
+      expect(response.status).toBe(422);
+      expect(response.body.errors).toBeDefined();
+    });
   });
 
-  it("should log the user in successfully", async () => {
-    await request(app).post("/auth/register").send({
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@example.com",
-      password: "password123",
-      phone: "1234567890",
+  describe("POST /auth/login", () => {
+    it("should log the user in successfully", async () => {
+      const loginData = {
+        email: "john.doe@example.com",
+        password: "password123",
+      };
+
+      const response = await request(app)
+        .post("/api/auth/login")
+        .send(loginData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("success");
+      expect(response.body.data.user.email).toBe(loginData.email);
+      expect(response.body.data.accessToken).toBeDefined();
     });
 
-    const res = await request(app).post("/auth/login").send({
-      email: "john.doe@example.com",
-      password: "password123",
-    });
+    it("should fail with incorrect credentials", async () => {
+      const loginData = {
+        email: "john.doe@example.com",
+        password: "wrongpassword",
+      };
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty("data");
-    expect(res.body.data).toHaveProperty("accessToken");
+      const response = await request(app)
+        .post("/api/auth/login")
+        .send(loginData);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe("Authentication failed");
+    });
   });
 });
