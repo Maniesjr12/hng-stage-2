@@ -2,55 +2,35 @@ const { PrismaClient } = require("../../prisma/client");
 const prisma = new PrismaClient();
 
 exports.getUserbyIdandOrg = async (req, res) => {
-  const userId = req.params.id;
+  const { id } = req.params;
+  const userId = req.user.userId;
 
   try {
-    // Find the user by ID
-    const user = await prisma.user.findUnique({
-      where: { userId: userId },
-      include: {
-        organisations: true,
+    const user = await prisma.user.findFirst({
+      where: {
+        userId: id,
+        organisations: { some: { users: { some: { userId } } } },
       },
     });
 
     if (!user) {
-      return res.status(404).json({
-        status: "fail",
-        message: "User not found",
-      });
+      return res
+        .status(404)
+        .json({ status: "Not found", message: "User not found" });
     }
 
-    // Check if the requesting user is the user themselves or belongs to an organization the user belongs to
-    const isUserAllowed =
-      req.user.id === userId ||
-      user.organisations.some((org) =>
-        org.users.some((u) => u.id === req.user.id)
-      );
-
-    if (!isUserAllowed) {
-      return res.status(403).json({
-        status: "fail",
-        message: "Not authorized to access this user record",
-      });
-    }
-
-    // Return the user data
     res.status(200).json({
       status: "success",
-      message: "User record retrieved successfully",
+      message: "User retrieved successfully",
       data: {
-        userId: user.id,
+        userId: user.userId,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         phone: user.phone,
       },
     });
-  } catch (error) {
-    res.status(500).json({
-      status: "error",
-      message: "Server error",
-      error: error.message,
-    });
+  } catch (err) {
+    res.status(400).json({ status: "Bad request", message: "Client error" });
   }
 };
