@@ -7,7 +7,7 @@ exports.getUserbyIdandOrg = async (req, res) => {
   try {
     // Find the user by ID
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { userId: userId },
       include: {
         organisations: true,
       },
